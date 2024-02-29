@@ -1,39 +1,44 @@
+import sys
 import cv2
-import customtkinter as ctk
-from PIL import Image, ImageTk
+from datetime import datetime
+from PyQt6.uic import loadUi
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import QDialog, QApplication, QMainWindow
 
 
-class FaceRecognitionApp(ctk.CTk):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.title("Face Recognition App")
-        self.geometry("640x480")
-        self.resizable(False, False)
+        loadUi("./FaceRec.ui", self)
+        self.setWindowTitle("IP Camera and Face Recognition")
 
-        self.video_frame = ctk.CTkFrame(self, width=640, height=480)
-        self.video_frame.pack()
 
-        self.cap = cv2.VideoCapture(0)
-        self.canvas = ctk.CTkCanvas(self.video_frame, width=self.cap.get(cv2.CAP_PROP_FRAME_WIDTH),
-                                    height=self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.canvas.pack()
+    def start_video_stream(self):
+        self.capture = cv2.VideoCapture(0) # or IP camera url
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frame)
+        self.timer.start(1000 // 30)  # 30 FPS
 
-        self.delay = 5
-        self.update()
-
-    def update(self):
-        ret, frame = self.cap.read()
+    def update_frame(self):
+        ret, frame = self.capture.read()
         if ret:
-            self.photo = ImageTk.PhotoImage(image=Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
-            self.canvas.create_image(0, 0, image=self.photo, anchor=ctk.NW)
+            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb_image.shape
+            bytes_per_line = ch * w
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+            pixmap = QPixmap.fromImage(qt_image)
+            self.imgLabel.setPixmap(pixmap)
+            self.imgLabel.setScaledContents(True)
 
-        self.after(self.delay, self.update)
-
-
-def main():
-    app = FaceRecognitionApp()
-    app.mainloop()
+            current_date = datetime.now()
+            self.DateLabel.setText(str(current_date.strftime('%d.%b.%Y')))
+            self.TimeLabel.setText(str(current_date.strftime('%H:%M:%S')))
 
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    window.start_video_stream()
+    sys.exit(app.exec())
