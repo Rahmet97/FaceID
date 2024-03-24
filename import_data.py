@@ -1,6 +1,7 @@
 import os
 import cv2
 import face_recognition
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import User
